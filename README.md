@@ -1,16 +1,25 @@
-各组件版本：
+###### 各组件版本：
 python：3.13版本
+
 lua：5.4.7
+
 protoc :libprotoc 28.3
-流程：
-● github上https://github.com/sean-lin/protoc-gen-lua下载了一份代码，按照readme的教程进行操作：我当前是lua5.4版本，对文件进行了如下修改。
-● 先更改了一下Makefile文件，将lua5.1改为lua：
+
+###### 流程：
++ github上[https://github.com/sean-lin/protoc-gen-lua](https://github.com/sean-lin/protoc-gen-lua)下载了一份代码，按照readme的教程进行操作：我当前是lua5.4版本，对文件进行了如下修改。
++ 先更改了一下Makefile文件，将lua5.1改为lua：
+
+```c
 将LAGS=`pkg-config --cflags lua5.1` -std=gnu99
 LDFLAGS=`pkg-config --libs lua5.1`
 改为：
 CFLAGS=`pkg-config --cflags lua` -std=gnu99
 LDFLAGS=`pkg-config --libs lua`
-● 修改pb.c文件，
+```
+
++ 修改pb.c文件，
+
+```c
 #ifdef _ALLBSD_SOURCE
 #include <machine/endian.h>
 #else
@@ -18,10 +27,17 @@ LDFLAGS=`pkg-config --libs lua`
 #endif
 替换为
 #include <endian.h>
+```
+
 这个时候直接去运行make会报错
 
-● 继续修改pb.c文件
+![](https://cdn.nlark.com/yuque/0/2024/png/40375869/1730077640904-f54df4a9-70c7-47a3-87b4-2909405691d3.png)
+
++ 继续修改pb.c文件
+
 全局搜一下，将static const struct luaL_reg修改为static const struct luaL_Reg
+
+```c
 // int luaopen_pb (lua_State *L)
 // {
 //     luaL_newmetatable(L, IOSTRING_META);
@@ -51,36 +67,49 @@ int luaopen_pb (lua_State *L)
     lua_setglobal(L, "pb");
 
 } 
-● 这个时候执行make，依然会报错pkg-config 找不到lua5.4.pc文件，先执行如下指令找到这个文件，解决办法：
+```
+
++ 这个时候执行make，依然会报错pkg-config 找不到lua5.4.pc文件，先执行如下指令找到这个文件，解决办法：
+
 执行find /usr -name "lua*.pc" 2>/dev/null
-找到文件存于/usr/local/Cellar/lua/5.4.7/lib/pkgconfig
-执行指令：
-export PKG_CONFIG_PATH=/usr/local/Cellar/lua/5.4.7/lib/pkgconfig:$PKG_CONFIG_PATH
-注意这是个临时设置，仅当前会话有效。如需设计永久见下：
+
+找到文件存于<font style="color:#000000;">/usr/local/Cellar/lua/5.4.7/lib/pkgconfig</font>
+
+<font style="color:#000000;">执行指令：</font>
+
+<font style="color:#000000;">export PKG_CONFIG_PATH=/usr/local/Cellar/lua/5.4.7/lib/pkgconfig:$PKG_CONFIG_PATH</font>
+
+<font style="color:#000000;">注意这是个临时设置，仅当前会话有效。如需设计永久见下：</font>
+
+```plain
 # 永久设置（添加到 ~/.bashrc 或 ~/.zshrc）
 echo 'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH' >> ~/.bashrc
 source ~/.bashrc
+```
+
 过程中可以使用以下指令看是否设置成功：
+
+```plain
 # 验证 pkg-config 能否正确找到并使用 Lua
 pkg-config --cflags lua5.4
 pkg-config --libs lua5.4
-现在make就可以成功了，将生成的pb.so拷贝到/usr/local/bin 目录下就大功告成了。
-● 接下来需要做如下几件事情，确保电脑上已经安装了protobuf，可以使用brew Install protobuf 安装，因为需要执行protoc指令，并且python环境下安装了protobuf，可使用pip3 install protobuf安装，我安装的是python3.13。
-● 然后去你的python环境下/site-packages/google/protobuf/compiler/plugin_pb2.py，找到plugin_pb2.py这个文件。并把这个文件移动至/usr/local/bin 目录。接下来就需要修改protoc-gen-lua。
-将代码改成：
-注意第一行代码，#!/usr/local/openresty/lualib/luaenv/bin/python，需要你把这里改成你自己的python环境。然后把protoc-gen-lua移动至/usr/local/bin 目录。
-● 将代码改成：
+```
+
+现在make就可以成功了，将生成的<font style="color:rgb(77, 77, 77);">pb.so拷贝到/usr/local/bin 目录下就大功告成了。</font>
+
++ <font style="color:rgb(77, 77, 77);">接下来需要做如下几件事情，确保电脑上已经安装了protobuf，可以使用brew Install protobuf 安装，因为需要执行protoc指令，并且python环境下安装了protobuf，可使用pip3 install protobuf安装，我安装的是python3.13。</font>
++ <font style="color:rgb(77, 77, 77);">然后去你的python环境下/site-packages/google/protobuf/compiler/plugin_pb2.py，找到plugin_pb2.py这个文件。并把这个文件移动至/usr/local/bin 目录。接下来就需要修改protoc-gen-lua。</font>
+
+<font style="color:rgb(77, 77, 77);">将代码改成：</font>
+
+注意第一行代码，#!/usr/local/openresty/lualib/luaenv/bin/python，需要你把这里改成你自己的python环境。然后把<font style="color:rgb(77, 77, 77);">protoc-gen-lua移动至/usr/local/bin 目录。</font>
+
++ <font style="color:rgb(77, 77, 77);">将代码改成：</font>
+
+```c
 #!/usr/local/openresty/lualib/luaenv/bin/python
 # protoc-gen-erl
 # Google's Protocol Buffers project, ported to lua.
-# https://code.google.com/p/protoc-gen-lua/
-#
-# Copyright (c) 2010 , 林卓毅 (Zhuoyi Lin) netsnail@gmail.com
-# All rights reserved.
-#
-# Use, modification and distribution are subject to the "New BSD License"
-# as listed at <url: http://www.opensource.org/licenses/bsd-license.php >.
-
 import sys
 import os.path as path
 from io import StringIO
@@ -475,12 +504,21 @@ def main():
             print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx", str(e))
 if __name__ == "__main__":
     main()
-● 注意第一行代码，#!/usr/local/openresty/lualib/luaenv/bin/python，需要你把这里改成你自己的python环境。然后把protoc-gen-lua移动至/usr/local/bin 目录。
-● 注意第一行代码，#!/usr/local/openresty/lualib/luaenv/bin/python，需要你把这里改成你自己的python环境。然后把protoc-gen-lua移动至/usr/local/bin 目录。
-● 现在你就可以执行protoc  --lua_out=. person.proto了。
-● 完整版代码已上传至github：https://github.com/lionel-daydayup/protoc-gen-lua
-参考：
-https://blog.csdn.net/morning_bird/article/details/77869038
+```
 
++ 注意第一行代码，#!/usr/local/openresty/lualib/luaenv/bin/python，需要你把这里改成你自己的python环境。然后把<font style="color:rgb(77, 77, 77);">protoc-gen-lua移动至/usr/local/bin 目录。</font>
++ 注意第一行代码，#!/usr/local/openresty/lualib/luaenv/bin/python，需要你把这里改成你自己的python环境。然后把<font style="color:rgb(77, 77, 77);">protoc-gen-lua移动至/usr/local/bin 目录。</font>
++ <font style="color:rgb(77, 77, 77);">现在你就可以执行protoc  --lua_out=. person.proto了。</font>
++ <font style="color:rgb(77, 77, 77);">完整版代码已上传至github：</font>[https://github.com/lionel-daydayup/protoc-gen-lua](https://github.com/lionel-daydayup/protoc-gen-lua)
 
+###### <font style="color:rgb(77, 77, 77);">参考：</font>
+[https://blog.csdn.net/morning_bird/article/details/77869038](https://blog.csdn.net/morning_bird/article/details/77869038)
+
+<font style="color:rgb(77, 77, 77);"></font>
+
+<font style="color:rgb(77, 77, 77);"></font>
+
+<font style="color:rgb(77, 77, 77);"></font>
+
+<font style="color:rgb(77, 77, 77);"></font>
 
